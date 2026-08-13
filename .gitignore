@@ -1,0 +1,29 @@
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+__pycache__/
+*.py[cod]
+*.log
+.venv/
+venv/
+.env
+
+# Generated image datasets are several GB; keep them outside normal Git.
+notebooks/images/
+notebooks/images_reindexed/
+
+# Training outputs and local app cache.
+notebooks/model_artifacts/
+web_app/uploads/
+web_app/satellite_cache/
+
+# Model/checkpoint binaries.
+*.pth
+*.pt
+*.h5
+*.keras
+*.pkl
+
+# Keep the deployed cross-attention model artifacts tracked for the web demo.
+!notebooks/model_artifacts_cross_attention/
+!notebooks/model_artifacts_cross_attention/*
+web_app/.env

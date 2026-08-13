@@ -1,0 +1,21 @@
+# PropChain Capstone — Full requirements
+# Install: pip install -r requirements.txt
+
+# ── ML / PyTorch ───────────────────────────────────────────────
+torch==2.3.0
+torchvision==0.18.0
+Pillow==10.3.0
+scikit-learn==1.5.0
+joblib==1.4.2
+numpy==1.26.4
+pandas==2.2.2
+
+# ── Blockchain ─────────────────────────────────────────────────
+web3==6.20.3
+py-solc-x==2.0.3
+
+# ── HTTP ───────────────────────────────────────────────────────
+requests==2.32.3
+
+# ── Utilities ──────────────────────────────────────────────────
+python-dotenv==1.0.1

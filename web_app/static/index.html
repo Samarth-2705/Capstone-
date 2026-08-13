@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Property Price AI</title>
+    <link rel="stylesheet" href="/static/app.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Fusion-2 cross attention</p>
+          <h1>Satellite-backed property price intelligence</h1>
+          <p class="hero-copy">
+            Fetch a Google satellite crop, align the target house, and estimate price with the trained multimodal model.
+          </p>
+        </div>
+        <div class="model-strip">
+          <span>Zoom 19</span>
+          <span>Image + tabular + text</span>
+          <span>Cross attention active</span>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <form id="predictionForm" class="panel input-panel">
+          <div class="panel-heading">
+            <h2>Property Inputs</h2>
+            <p>Keep the satellite crosshair over the target house before predicting.</p>
+          </div>
+
+          <div class="grid">
+            <label>
+              <span>BHK</span>
+              <input name="bhk" type="number" min="1" step="1" value="3" required />
+            </label>
+            <label>
+              <span>Baths</span>
+              <input name="baths" type="number" min="1" step="1" value="2" required />
+            </label>
+            <label>
+              <span>Total area</span>
+              <input name="area" type="number" min="100" step="10" value="1500" required />
+            </label>
+            <label>
+              <span>Balcony</span>
+              <select name="balcony">
+                <option>Yes</option>
+                <option>No</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            <span>Property location</span>
+            <div class="location-row">
+              <input name="location" value="near Koramangala Mall, Basaveshwar Nagar, Bangalore" required />
+              <button id="geocodeButton" class="small-button" type="button">Geo</button>
+              <button id="currentLocationButton" class="small-button" type="button">GPS</button>
+            </div>
+          </label>
+
+          <label>
+            <span>Nearby context</span>
+            <textarea name="context" rows="3" placeholder="Example: near mall, school, hospital, main road, metro station"></textarea>
+          </label>
+
+          <div class="grid">
+            <label>
+              <span>Latitude</span>
+              <input name="latitude" type="number" step="0.000001" placeholder="12.971599" />
+            </label>
+            <label>
+              <span>Longitude</span>
+              <input name="longitude" type="number" step="0.000001" placeholder="77.594566" />
+            </label>
+            <label>
+              <span>Satellite zoom</span>
+              <input name="zoom" type="number" min="17" max="21" step="1" value="19" />
+            </label>
+            <label>
+              <span>Nudge step</span>
+              <input id="nudgeStep" type="number" min="5" max="500" step="5" value="50" />
+            </label>
+          </div>
+
+          <div class="map-tools">
+            <button id="previewSatelliteButton" type="button">Preview Satellite</button>
+            <div class="nudge-grid" aria-label="Adjust satellite center">
+              <button type="button" data-nudge="north">N</button>
+              <button type="button" data-nudge="west">W</button>
+              <button type="button" data-nudge="east">E</button>
+              <button type="button" data-nudge="south">S</button>
+            </div>
+          </div>
+
+          <button class="primary-action" type="submit">Run Cross-Attention Estimate</button>
+          <p id="formStatus" class="status-line">Ready.</p>
+        </form>
+
+        <section class="panel visual-panel">
+          <div class="satellite-preview">
+            <img id="satellitePreview" alt="" />
+            <div id="satelliteEmpty" class="radar-placeholder">
+              <div class="radar-core"></div>
+              <strong>Satellite preview</strong>
+              <span>Use Geo or GPS, then preview and nudge until the property is centered.</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel result-panel">
+          <div class="panel-heading">
+            <h2>Prediction</h2>
+            <p id="modelStatus">Cross-attention model loaded from training artifacts.</p>
+          </div>
+
+          <div class="price-display">
+            <p class="eyebrow">Estimated value</p>
+            <output id="prediction">Waiting</output>
+            <p id="range" class="range">Run an estimate to see calibrated range.</p>
+          </div>
+
+          <div class="confidence">
+            <span>Confidence</span>
+            <meter id="confidenceMeter" min="0" max="100" value="0"></meter>
+            <strong id="confidenceText">0%</strong>
+          </div>
+
+          <div class="model-cards">
+            <div>
+              <span>Model R2</span>
+              <strong id="metricR2">--</strong>
+            </div>
+            <div>
+              <span>MAPE</span>
+              <strong id="metricMape">--</strong>
+            </div>
+            <div>
+              <span>Median error</span>
+              <strong id="metricP50">--</strong>
+            </div>
+          </div>
+        </section>
+
+        <!-- Chainlink USD conversion panel -->
+        <section class="panel chainlink-panel" id="chainlinkPanel" style="display:none">
+          <div class="panel-heading">
+            <h2>&#128279; Chainlink Price Feed</h2>
+            <p id="clSource">Live INR/USD conversion via Chainlink oracle</p>
+          </div>
+          <div class="cl-grid">
+            <div class="cl-card cl-card--gold">
+              <span class="bc-label">Predicted Value (INR)</span>
+              <strong id="clInr">—</strong>
+            </div>
+            <div class="cl-card cl-card--blue">
+              <span class="bc-label">Equivalent (USD)</span>
+              <strong id="clUsd">—</strong>
+            </div>
+            <div class="cl-card">
+              <span class="bc-label">Exchange Rate</span>
+              <strong id="clRate">—</strong>
+            </div>
+            <div class="cl-card">
+              <span class="bc-label">Oracle Status</span>
+              <strong id="clLive">—</strong>
+            </div>
+          </div>
+          <p class="bc-footer-note" id="clNote">
+            Exchange rate sourced from Chainlink decentralised oracle network.
+          </p>
+        </section>
+
+        <section class="panel blockchain-panel" id="blockchainPanel" style="display:none">
+          <div class="panel-heading">
+            <h2>&#9953; Blockchain Proof</h2>
+            <p id="bcStatus">Valuation stored immutably on-chain.</p>
+          </div>
+
+          <div class="bc-proof-grid">
+            <div class="bc-card bc-card--green" id="bcStoredCard">
+              <span class="bc-label">Status</span>
+              <strong id="bcStored">Stored ✓</strong>
+            </div>
+            <div class="bc-card">
+              <span class="bc-label">Prediction #</span>
+              <strong id="bcIndex">—</strong>
+            </div>
+            <div class="bc-card">
+              <span class="bc-label">Contract</span>
+              <strong id="bcContract" class="bc-hash">—</strong>
+            </div>
+          </div>
+
+          <div class="bc-hash-table">
+            <div class="bc-hash-row">
+              <span class="bc-hash-label">Transaction hash</span>
+              <code id="bcTxHash" class="bc-hash-val">—</code>
+            </div>
+            <div class="bc-hash-row">
+              <span class="bc-hash-label">Image SHA-256</span>
+              <code id="bcImageHash" class="bc-hash-val">—</code>
+            </div>
+            <div class="bc-hash-row">
+              <span class="bc-hash-label">Report SHA-256</span>
+              <code id="bcReportHash" class="bc-hash-val">—</code>
+            </div>
+            <div class="bc-hash-row">
+              <span class="bc-hash-label">IPFS CID</span>
+              <code id="bcIpfsCid" class="bc-hash-val">—</code>
+            </div>
+          </div>
+
+          <p class="bc-footer-note">
+            These hashes are stored permanently on the Ethereum blockchain.
+            Anyone can verify this valuation report has not been tampered with
+            by re-hashing the report and comparing against the on-chain value.
+          </p>
+        </section>
+
+        <!-- Valuation Report Panel -->
+        <section class="panel report-panel" id="reportPanel" style="display:none">
+          <div class="panel-heading">
+            <h2>&#128196; Valuation Report</h2>
+            <p>Full structured report generated for this valuation</p>
+          </div>
+          <div class="report-grid" id="reportGrid"></div>
+          <div class="report-actions">
+            <button class="small-button" onclick="downloadReport('json')">&#8659; Download JSON</button>
+            <button class="small-button" onclick="downloadReport('pdf')">&#8659; Download PDF</button>
+          </div>
+        </section>
+
+        <!-- Blockchain History Panel -->
+        <section class="panel history-panel" id="historyPanel">
+          <div class="panel-heading history-heading">
+            <div>
+              <h2>&#9741; Blockchain History</h2>
+              <p>All valuation records stored on-chain</p>
+            </div>
+            <button class="small-button" id="refreshHistoryBtn" onclick="loadHistory()">&#8635; Refresh</button>
+          </div>
+          <div id="historyContent">
+            <p class="history-empty">Click Refresh to load on-chain records.</p>
+          </div>
+        </section>
+
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
