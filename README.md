@@ -47,7 +47,7 @@ capstone_final/
 
 ## Tech Stack
 
-- Python 3.11+
+- Python 3.11/3.12
 - PyTorch + torchvision
 - scikit-learn, pandas, numpy, joblib
 - Web3.py + py-solc-x (optional blockchain flow)
