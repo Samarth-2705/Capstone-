@@ -19,7 +19,7 @@ Predictions are produced by a trained Fusion-2 cross-attention PyTorch model. Th
 ## Repository Layout
 
 ```text
-capstone_final/
+capstone/
 ├── notebooks/
 │   ├── Baseline.ipynb
 │   ├── Fusion-2-cross-attention.ipynb
