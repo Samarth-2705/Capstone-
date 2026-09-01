@@ -1,10 +1,18 @@
 from __future__ import annotations
+import logging
+from torchvision import models, transforms
+import torch.nn as nn
+import torch
+from PIL import Image
+import pandas as pd
+import numpy as np
+import joblib
 
 import json
 import math
 import os
 from dotenv import load_dotenv
-load_dotenv()
+
 import re
 import sys
 import time
@@ -12,26 +20,21 @@ import uuid
 import warnings
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import ssl
+import certifi
 from urllib.error import HTTPError
 from urllib.parse import urlencode, urlparse
 from urllib.request import urlopen
-
-import joblib
-import numpy as np
-import pandas as pd
-from PIL import Image
-
-import torch
-import torch.nn as nn
-from torchvision import models, transforms
+SSL_CONTEXT = ssl.create_default_context(
+    cafile=certifi.where()
+)
 
 
 # ── Blockchain integration (additive — does not change ML logic) ──────────────
-import logging
 try:
     from blockchain_utils import BlockchainClient
     _BC_CLIENT: "BlockchainClient | None" = None
-    _BC_ERROR  = ""
+    _BC_ERROR = ""
 
     def _get_blockchain() -> "BlockchainClient | None":
         global _BC_CLIENT, _BC_ERROR
@@ -40,7 +43,8 @@ try:
         try:
             rpc = os.environ.get("BLOCKCHAIN_RPC", "http://127.0.0.1:7545")
             _BC_CLIENT = BlockchainClient(rpc_url=rpc)
-            logging.info("Blockchain connected: " + _BC_CLIENT.contract.address)
+            logging.info("Blockchain connected: " +
+                         _BC_CLIENT.contract.address)
         except Exception as e:
             _BC_ERROR = str(e)
             logging.warning("Blockchain not available: " + str(e))
@@ -87,9 +91,27 @@ STATIC_DIR = ROOT / "static"
 SATELLITE_DIR = ROOT / "satellite_cache"
 ARTIFACT_DIR = PROJECT_ROOT / "notebooks" / "model_artifacts_cross_attention"
 
+# Explicitly load the .env file from the project root.
+ENV_FILE = PROJECT_ROOT / ".env"
+
+if ENV_FILE.exists():
+    load_dotenv(dotenv_path=ENV_FILE, override=True)
+    print(f"[ENV] Loaded .env from: {ENV_FILE}")
+else:
+    print(f"[ENV] WARNING: .env not found at: {ENV_FILE}")
+
 HOST = "127.0.0.1"
 PORT = 8000
-GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
+
+GOOGLE_MAPS_API_KEY = os.environ.get(
+    "GOOGLE_MAPS_API_KEY",
+    ""
+).strip()
+
+print(
+    f"[ENV] GOOGLE_MAPS_API_KEY loaded: "
+    f"{bool(GOOGLE_MAPS_API_KEY)}"
+)
 
 
 def rupees(value: float) -> str:
@@ -111,7 +133,8 @@ def parse_float(value: object, fallback: float) -> float:
 
 def require_google_key() -> str:
     if not GOOGLE_MAPS_API_KEY:
-        raise RuntimeError("Google Maps API key missing. Set GOOGLE_MAPS_API_KEY before starting the server.")
+        raise RuntimeError(
+            "Google Maps API key missing. Set GOOGLE_MAPS_API_KEY before starting the server.")
     return GOOGLE_MAPS_API_KEY
 
 
@@ -120,14 +143,20 @@ def geocode_location(location: str) -> tuple[float, float]:
     params = urlencode({"address": location, "key": key})
     url = f"https://maps.googleapis.com/maps/api/geocode/json?{params}"
     try:
-        with urlopen(url, timeout=20) as response:
+        with urlopen(
+            url,
+            timeout=20,
+            context=SSL_CONTEXT
+        ) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Google Geocoding HTTP {exc.code}: {detail[:240]}") from exc
+        raise RuntimeError(
+            f"Google Geocoding HTTP {exc.code}: {detail[:240]}") from exc
 
     if payload.get("status") != "OK" or not payload.get("results"):
-        raise RuntimeError(f"Google Geocoding failed: {payload.get('status', 'UNKNOWN')}")
+        raise RuntimeError(
+            f"Google Geocoding failed: {payload.get('status', 'UNKNOWN')}")
 
     point = payload["results"][0]["geometry"]["location"]
     return float(point["lat"]), float(point["lng"])
@@ -144,7 +173,8 @@ def normalized_zoom(value: object) -> int:
 def fetch_google_satellite(lat: float, lng: float, zoom: int = 19) -> Path:
     key = require_google_key()
     SATELLITE_DIR.mkdir(exist_ok=True)
-    file_path = SATELLITE_DIR / f"satellite-{int(time.time())}-{uuid.uuid4().hex}.png"
+    file_path = SATELLITE_DIR / \
+        f"satellite-{int(time.time())}-{uuid.uuid4().hex}.png"
     params = urlencode(
         {
             "center": f"{lat},{lng}",
@@ -157,11 +187,16 @@ def fetch_google_satellite(lat: float, lng: float, zoom: int = 19) -> Path:
     )
     url = f"https://maps.googleapis.com/maps/api/staticmap?{params}"
     try:
-        with urlopen(url, timeout=30) as response:
+        with urlopen(
+            url,
+            timeout=30,
+            context=SSL_CONTEXT
+        ) as response:
             data = response.read()
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Google Static Maps HTTP {exc.code}: {detail[:240]}") from exc
+        raise RuntimeError(
+            f"Google Static Maps HTTP {exc.code}: {detail[:240]}") from exc
 
     file_path.write_bytes(data)
     with Image.open(file_path) as img:
@@ -191,7 +226,8 @@ class CrossAttentionBlock(nn.Module):
 
     def forward(self, query_token, context_tokens):
         context = self.context_norm(context_tokens)
-        attn_out, _ = self.attn(self.query_norm(query_token), context, context, need_weights=False)
+        attn_out, _ = self.attn(self.query_norm(
+            query_token), context, context, need_weights=False)
         token = query_token + self.dropout(attn_out)
         token = token + self.dropout(self.ff(self.ff_norm(token)))
         return token
@@ -250,11 +286,15 @@ class FusionModel(nn.Module):
             batch_first=True,
             norm_first=True,
         )
-        self.self_attention = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        self.self_attention = nn.TransformerEncoder(
+            encoder_layer, num_layers=2)
 
-        self.image_cross = CrossAttentionBlock(hidden_size, num_heads=num_heads, dropout=dropout)
-        self.tab_cross = CrossAttentionBlock(hidden_size, num_heads=num_heads, dropout=dropout)
-        self.text_cross = CrossAttentionBlock(hidden_size, num_heads=num_heads, dropout=dropout)
+        self.image_cross = CrossAttentionBlock(
+            hidden_size, num_heads=num_heads, dropout=dropout)
+        self.tab_cross = CrossAttentionBlock(
+            hidden_size, num_heads=num_heads, dropout=dropout)
+        self.text_cross = CrossAttentionBlock(
+            hidden_size, num_heads=num_heads, dropout=dropout)
 
         self.gate = nn.Sequential(
             nn.Linear(hidden_size * 3, hidden_size),
@@ -287,7 +327,8 @@ class FusionModel(nn.Module):
         tokens = self.self_attention(tokens)
 
         img_token = self.image_cross(tokens[:, 0:1, :], tokens[:, 1:3, :])
-        tab_token = self.tab_cross(tokens[:, 1:2, :], torch.cat([tokens[:, 0:1, :], tokens[:, 2:3, :]], dim=1))
+        tab_token = self.tab_cross(tokens[:, 1:2, :], torch.cat(
+            [tokens[:, 0:1, :], tokens[:, 2:3, :]], dim=1))
         text_token = self.text_cross(tokens[:, 2:3, :], tokens[:, 0:2, :])
 
         fused_tokens = torch.cat([img_token, tab_token, text_token], dim=1)
@@ -300,17 +341,20 @@ class FusionModel(nn.Module):
 
 class CrossAttentionPricePredictor:
     def __init__(self) -> None:
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu")
         checkpoint_path = ARTIFACT_DIR / "fusion2_cross_attention_best_model.pth"
         if not checkpoint_path.exists():
-            raise FileNotFoundError(f"Model checkpoint not found: {checkpoint_path}")
+            raise FileNotFoundError(
+                f"Model checkpoint not found: {checkpoint_path}")
 
         self.checkpoint = torch.load(checkpoint_path, map_location=self.device)
         self.features = list(self.checkpoint["features"])
         self.scaler = joblib.load(ARTIFACT_DIR / "scaler.joblib")
         self.tfidf = joblib.load(ARTIFACT_DIR / "tfidf.joblib")
         self.kmeans = joblib.load(ARTIFACT_DIR / "kmeans.joblib")
-        self.calibration = joblib.load(ARTIFACT_DIR / "confidence_calibration.joblib")
+        self.calibration = joblib.load(
+            ARTIFACT_DIR / "confidence_calibration.joblib")
         self.metrics = joblib.load(ARTIFACT_DIR / "final_metrics.joblib")
 
         self.model = FusionModel(
@@ -338,7 +382,8 @@ class CrossAttentionPricePredictor:
         bhk = parse_float(form.get("bhk"), 2.0)
         baths = parse_float(form.get("baths"), max(1.0, bhk))
         area = max(parse_float(form.get("area"), 1000.0), 100.0)
-        balcony = 1.0 if str(form.get("balcony", "yes")).lower() == "yes" else 0.0
+        balcony = 1.0 if str(form.get("balcony", "yes")
+                             ).lower() == "yes" else 0.0
         coords = pd.DataFrame([[lat, lng]], columns=["latitude", "longitude"])
         location_cluster = int(self.kmeans.predict(coords)[0])
 
@@ -371,18 +416,23 @@ class CrossAttentionPricePredictor:
 
     def predict(self, form: dict[str, object], satellite_path: Path, lat: float, lng: float) -> dict[str, object]:
         feature_row = self._build_feature_row(form, lat, lng)
-        tab_values = pd.DataFrame([[feature_row[name] for name in self.features]], columns=self.features)
-        tab_tensor = torch.tensor(self.scaler.transform(tab_values).astype(np.float32), dtype=torch.float32, device=self.device)
+        tab_values = pd.DataFrame(
+            [[feature_row[name] for name in self.features]], columns=self.features)
+        tab_tensor = torch.tensor(self.scaler.transform(tab_values).astype(
+            np.float32), dtype=torch.float32, device=self.device)
 
         text = self._build_text(form, lat, lng)
         text_values = self.tfidf.transform([text]).toarray().astype(np.float32)
-        text_tensor = torch.tensor(text_values, dtype=torch.float32, device=self.device)
+        text_tensor = torch.tensor(
+            text_values, dtype=torch.float32, device=self.device)
 
         with Image.open(satellite_path) as img:
-            image_tensor = self.image_transform(img.convert("RGB")).unsqueeze(0).to(self.device)
+            image_tensor = self.image_transform(
+                img.convert("RGB")).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
-            predicted_log_price = float(self.model(image_tensor, tab_tensor, text_tensor).cpu().numpy().flatten()[0])
+            predicted_log_price = float(self.model(
+                image_tensor, tab_tensor, text_tensor).cpu().numpy().flatten()[0])
 
         predicted_price = max(float(np.expm1(predicted_log_price)), 0.0)
         p50 = float(self.calibration.get("p50_abs_pct_error", 26.0)) / 100.0
@@ -425,18 +475,21 @@ class AppHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _json(self, status: int, payload: dict[str, object]) -> None:
-        self._send(status, json.dumps(payload).encode("utf-8"), "application/json; charset=utf-8")
+        self._send(status, json.dumps(payload).encode(
+            "utf-8"), "application/json; charset=utf-8")
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path
 
         if path == "/":
-            self._serve_file(STATIC_DIR / "index.html", "text/html; charset=utf-8")
+            self._serve_file(STATIC_DIR / "index.html",
+                             "text/html; charset=utf-8")
         elif path == "/static/app.css":
             self._serve_file(STATIC_DIR / "app.css", "text/css; charset=utf-8")
         elif path == "/static/app.js":
-            self._serve_file(STATIC_DIR / "app.js", "application/javascript; charset=utf-8")
+            self._serve_file(STATIC_DIR / "app.js",
+                             "application/javascript; charset=utf-8")
         elif path.startswith("/satellite/"):
             image_path = SATELLITE_DIR / Path(path).name
             if image_path.exists() and image_path.suffix.lower() == ".png":
@@ -444,7 +497,8 @@ class AppHandler(BaseHTTPRequestHandler):
             else:
                 self._json(404, {"error": "Satellite image not found"})
         elif path == "/api/model-info":
-            self._json(200, {"model": PREDICTOR.metrics.get("test", {}), "calibration": PREDICTOR.calibration})
+            self._json(200, {"model": PREDICTOR.metrics.get(
+                "test", {}), "calibration": PREDICTOR.calibration})
         elif path == "/api/blockchain-history":
             self._handle_blockchain_history()
         else:
@@ -473,7 +527,8 @@ class AppHandler(BaseHTTPRequestHandler):
         if lat_value in {"", None} or lng_value in {"", None}:
             location = str(payload.get("location") or "").strip()
             if not location:
-                raise RuntimeError("Enter a location or click the location icon first.")
+                raise RuntimeError(
+                    "Enter a location or click the location icon first.")
             lat, lng = geocode_location(location)
             payload["latitude"] = lat
             payload["longitude"] = lng
@@ -485,25 +540,27 @@ class AppHandler(BaseHTTPRequestHandler):
         """Return all prediction records from the blockchain."""
         bc = _get_blockchain()
         if not bc:
-            self._json(503, {"success": False, "error": "Blockchain not connected"})
+            self._json(
+                503, {"success": False, "error": "Blockchain not connected"})
             return
         try:
-            n     = bc.contract.functions.getPredictionCount().call()
+            n = bc.contract.functions.getPredictionCount().call()
             preds = []
             for i in range(n):
                 p = bc.get_prediction(i)
                 preds.append({
-                    "index"       : p.index,
-                    "image_hash"  : p.input_hash,
-                    "report_hash" : p.output_hash,
-                    "report_cid"  : p.result_cid,
-                    "model_index" : p.model_version_index,
-                    "dataset_idx" : p.dataset_index,
+                    "index": p.index,
+                    "image_hash": p.input_hash,
+                    "report_hash": p.output_hash,
+                    "report_cid": p.result_cid,
+                    "model_index": p.model_version_index,
+                    "dataset_idx": p.dataset_index,
                     "requested_by": p.requested_by,
-                    "timestamp"   : p.timestamp,
-                    "verified"    : p.verified,
+                    "timestamp": p.timestamp,
+                    "verified": p.verified,
                 })
-            self._json(200, {"success": True, "count": n, "predictions": preds})
+            self._json(
+                200, {"success": True, "count": n, "predictions": preds})
         except Exception as e:
             self._json(500, {"success": False, "error": str(e)})
 
@@ -550,19 +607,23 @@ class AppHandler(BaseHTTPRequestHandler):
             # ── Blockchain proof (additive — does not affect ML result) ───────
             result["blockchain"] = {"stored": False, "error": ""}
             try:
-                import hashlib, json as _json, datetime as _dt, time as _time
+                import hashlib
+                import json as _json
+                import datetime as _dt
+                import time as _time
 
                 bc = _get_blockchain()
                 if bc:
                     # ── Step 1: Auto-register dataset if none exist ───────────
                     n_datasets = bc.contract.functions.getDatasetCount().call()
                     if n_datasets == 0:
-                        _ds_hash = hashlib.sha256(b"PropertyDataset-v1").hexdigest()
+                        _ds_hash = hashlib.sha256(
+                            b"PropertyDataset-v1").hexdigest()
                         bc.store_dataset(
-                            data_hash = _ds_hash,
-                            ipfs_cid  = "NO_IPFS_CONFIGURED",
-                            prev      = 9999,
-                            label     = "PropertyDataset-v1",
+                            data_hash=_ds_hash,
+                            ipfs_cid="NO_IPFS_CONFIGURED",
+                            prev=9999,
+                            label="PropertyDataset-v1",
                         )
                         n_datasets = 1
 
@@ -573,12 +634,13 @@ class AppHandler(BaseHTTPRequestHandler):
                         if _model_path.exists():
                             _mh = bc.hash_bytes(_model_path.read_bytes())
                         else:
-                            _mh = hashlib.sha256(b"FusionModel-CrossAttention-v1").hexdigest()
+                            _mh = hashlib.sha256(
+                                b"FusionModel-CrossAttention-v1").hexdigest()
                         bc.store_model_version(
-                            model_hash         = _mh,
-                            ipfs_cid           = "NO_IPFS_CONFIGURED",
-                            algorithm_tag      = "FusionModel-CrossAttention-v1",
-                            trained_on_dataset = 0,
+                            model_hash=_mh,
+                            ipfs_cid="NO_IPFS_CONFIGURED",
+                            algorithm_tag="FusionModel-CrossAttention-v1",
+                            trained_on_dataset=0,
                         )
                         n_models = 1
 
@@ -589,39 +651,42 @@ class AppHandler(BaseHTTPRequestHandler):
 
                     # ── Step 4: Build valuation report ────────────────────────
                     report = {
-                        "generated_at"   : _dt.datetime.utcnow().isoformat() + "Z",
-                        "property"       : {"latitude": lat, "longitude": lng, "zoom": zoom},
-                        "valuation"      : {
-                            "prediction" : result["prediction"],
-                            "range"      : result["range"],
-                            "confidence" : result["confidence"],
+                        "generated_at": _dt.datetime.utcnow().isoformat() + "Z",
+                        "property": {"latitude": lat, "longitude": lng, "zoom": zoom},
+                        "valuation": {
+                            "prediction": result["prediction"],
+                            "range": result["range"],
+                            "confidence": result["confidence"],
                         },
-                        "model"          : result.get("model", {}),
-                        "image_sha256"   : image_hash,
+                        "model": result.get("model", {}),
+                        "image_sha256": image_hash,
                     }
-                    report_json = _json.dumps(report, sort_keys=True, separators=(",", ":"))
-                    report_hash = hashlib.sha256(report_json.encode()).hexdigest()
+                    report_json = _json.dumps(
+                        report, sort_keys=True, separators=(",", ":"))
+                    report_hash = hashlib.sha256(
+                        report_json.encode()).hexdigest()
 
                     # ── Step 5: Pin report to IPFS (if Pinata configured) ─────
-                    report_cid = bc.pin_json_to_ipfs(report, name="valuation_report")
+                    report_cid = bc.pin_json_to_ipfs(
+                        report, name="valuation_report")
 
                     # ── Step 6: Store prediction on-chain ─────────────────────
                     bc_result = bc.store_prediction(
-                        input_hash          = image_hash,
-                        output_hash         = report_hash,
-                        result_cid          = report_cid,
-                        model_version_index = n_models   - 1,
-                        dataset_index       = n_datasets - 1,
+                        input_hash=image_hash,
+                        output_hash=report_hash,
+                        result_cid=report_cid,
+                        model_version_index=n_models - 1,
+                        dataset_index=n_datasets - 1,
                     )
                     result["blockchain"] = {
-                        "stored"      : True,
-                        "tx_hash"     : bc_result["tx"],
-                        "chain_index" : bc_result["index"],
-                        "image_hash"  : image_hash,
-                        "report_hash" : report_hash,
-                        "report_cid"  : report_cid,
-                        "contract"    : bc.contract.address,
-                        "error"       : "",
+                        "stored": True,
+                        "tx_hash": bc_result["tx"],
+                        "chain_index": bc_result["index"],
+                        "image_hash": image_hash,
+                        "report_hash": report_hash,
+                        "report_cid": report_cid,
+                        "contract": bc.contract.address,
+                        "error": "",
                     }
                 else:
                     result["blockchain"]["error"] = _BC_ERROR or "Blockchain not connected — run: ganache --port 7545"

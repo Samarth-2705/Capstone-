@@ -1,14 +1,16 @@
-# PropChain Capstone — Full requirements
+# PropChain Capstone — Python 3.13
 # Install: pip install -r requirements.txt
 
 # ── ML / PyTorch ───────────────────────────────────────────────
-torch==2.3.0
-torchvision==0.18.0
-Pillow==10.3.0
-scikit-learn==1.5.0
+torch==2.6.0
+torchvision==0.21.0
+Pillow==10.4.0
+
+# Python 3.13 compatible
+numpy==2.1.3
+scikit-learn==1.6.1
 joblib==1.4.2
-numpy==1.26.4
-pandas==2.2.2
+pandas==2.2.3
 
 # ── Blockchain ─────────────────────────────────────────────────
 web3==6.20.3
