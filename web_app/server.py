@@ -42,9 +42,15 @@ try:
             return _BC_CLIENT
         try:
             rpc = os.environ.get("BLOCKCHAIN_RPC", "http://127.0.0.1:7545")
-            _BC_CLIENT = BlockchainClient(rpc_url=rpc)
+            pinata_jwt = os.environ.get("PINATA_JWT", "").strip() or None
+            _BC_CLIENT = BlockchainClient(
+                rpc_url=rpc,
+                pinata_jwt=pinata_jwt,
+            )
             logging.info("Blockchain connected: " +
                          _BC_CLIENT.contract.address)
+            logging.info("Pinata IPFS: " +
+                         ("configured" if pinata_jwt else "not configured"))
         except Exception as e:
             _BC_ERROR = str(e)
             logging.warning("Blockchain not available: " + str(e))
@@ -111,6 +117,11 @@ GOOGLE_MAPS_API_KEY = os.environ.get(
 print(
     f"[ENV] GOOGLE_MAPS_API_KEY loaded: "
     f"{bool(GOOGLE_MAPS_API_KEY)}"
+)
+
+print(
+    f"[ENV] PINATA_JWT loaded: "
+    f"{bool(os.environ.get('PINATA_JWT', '').strip())}"
 )
 
 
@@ -512,6 +523,8 @@ class AppHandler(BaseHTTPRequestHandler):
             self._handle_satellite_preview()
         elif parsed.path == "/api/predict":
             self._handle_predict()
+        elif parsed.path == "/api/blockchain-verify":
+            self._handle_blockchain_verify()
         else:
             self._json(404, {"error": "Route not found"})
 
@@ -563,6 +576,30 @@ class AppHandler(BaseHTTPRequestHandler):
                 200, {"success": True, "count": n, "predictions": preds})
         except Exception as e:
             self._json(500, {"success": False, "error": str(e)})
+
+    def _handle_blockchain_verify(self) -> None:
+        """Mark one prediction as verified on-chain."""
+        bc = _get_blockchain()
+        if not bc:
+            self._json(
+                503, {"success": False, "error": "Blockchain not connected"})
+            return
+        try:
+            payload = self._read_json()
+            index = int(payload.get("index"))
+            tx_hash = bc.verify_prediction(index)
+            self._json(200, {
+                "success": True,
+                "index": index,
+                "tx_hash": tx_hash,
+            })
+        except (TypeError, ValueError):
+            self._json(400, {
+                "success": False,
+                "error": "A valid prediction index is required",
+            })
+        except Exception as exc:
+            self._json(500, {"success": False, "error": str(exc)})
 
     def _handle_geocode(self) -> None:
         try:
@@ -669,6 +706,13 @@ class AppHandler(BaseHTTPRequestHandler):
                     # ── Step 5: Pin report to IPFS (if Pinata configured) ─────
                     report_cid = bc.pin_json_to_ipfs(
                         report, name="valuation_report")
+                    if report_cid == "NO_IPFS_CONFIGURED":
+                        print(
+                            "[IPFS] Pinata is not configured; report was not pinned.")
+                    else:
+                        report_url = f"https://gateway.pinata.cloud/ipfs/{report_cid}"
+                        print(f"[IPFS] Report CID: {report_cid}")
+                        print(f"[IPFS] Report URL: {report_url}")
 
                     # ── Step 6: Store prediction on-chain ─────────────────────
                     bc_result = bc.store_prediction(

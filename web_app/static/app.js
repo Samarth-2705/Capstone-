@@ -17,15 +17,15 @@ const metricP50 = document.querySelector("#metricP50");
 
 // ── Blockchain panel elements ─────────────────────────────────────────────────
 const blockchainPanel = document.querySelector("#blockchainPanel");
-const bcStatus        = document.querySelector("#bcStatus");
-const bcStored        = document.querySelector("#bcStored");
-const bcStoredCard    = document.querySelector("#bcStoredCard");
-const bcIndex         = document.querySelector("#bcIndex");
-const bcContract      = document.querySelector("#bcContract");
-const bcTxHash        = document.querySelector("#bcTxHash");
-const bcImageHash     = document.querySelector("#bcImageHash");
-const bcReportHash    = document.querySelector("#bcReportHash");
-const bcIpfsCid       = document.querySelector("#bcIpfsCid");
+const bcStatus = document.querySelector("#bcStatus");
+const bcStored = document.querySelector("#bcStored");
+const bcStoredCard = document.querySelector("#bcStoredCard");
+const bcIndex = document.querySelector("#bcIndex");
+const bcContract = document.querySelector("#bcContract");
+const bcTxHash = document.querySelector("#bcTxHash");
+const bcImageHash = document.querySelector("#bcImageHash");
+const bcReportHash = document.querySelector("#bcReportHash");
+const bcIpfsCid = document.querySelector("#bcIpfsCid");
 
 function formPayload() {
   return Object.fromEntries(new FormData(form).entries());
@@ -102,12 +102,12 @@ function updateModelMetrics(model) {
 
 // ── Chainlink panel elements ─────────────────────────────────────────────────
 const chainlinkPanel = document.querySelector("#chainlinkPanel");
-const clInr    = document.querySelector("#clInr");
-const clUsd    = document.querySelector("#clUsd");
-const clRate   = document.querySelector("#clRate");
-const clLive   = document.querySelector("#clLive");
+const clInr = document.querySelector("#clInr");
+const clUsd = document.querySelector("#clUsd");
+const clRate = document.querySelector("#clRate");
+const clLive = document.querySelector("#clLive");
 const clSource = document.querySelector("#clSource");
-const clNote   = document.querySelector("#clNote");
+const clNote = document.querySelector("#clNote");
 
 function renderChainlink(cl) {
   if (!cl) return;
@@ -117,18 +117,18 @@ function renderChainlink(cl) {
     const inrFmt = new Intl.NumberFormat("en-IN", {
       style: "currency", currency: "INR", maximumFractionDigits: 0,
     }).format(cl.inr);
-    clInr.textContent   = inrFmt;
-    clUsd.textContent   = cl.usd_fmt || `$${cl.usd?.toLocaleString()}`;
-    clRate.textContent  = `1 USD = ₹${cl.rate?.toFixed(2)}`;
-    clLive.textContent  = cl.live ? "Live Oracle ✓" : "Simulated (Ganache)";
-    clLive.style.color  = cl.live ? "var(--accent)" : "#f59e0b";
+    clInr.textContent = inrFmt;
+    clUsd.textContent = cl.usd_fmt || `$${cl.usd?.toLocaleString()}`;
+    clRate.textContent = `1 USD = ₹${cl.rate?.toFixed(2)}`;
+    clLive.textContent = cl.live ? "Live Oracle ✓" : "Simulated (Ganache)";
+    clLive.style.color = cl.live ? "var(--accent)" : "#f59e0b";
     clSource.textContent = cl.rate_source || "Chainlink oracle";
-    clNote.textContent  = cl.live
+    clNote.textContent = cl.live
       ? "Exchange rate sourced live from Chainlink decentralised oracle on Sepolia."
       : "Running on Ganache — deploy to Sepolia for live Chainlink rates. Rate simulated at ₹83.50/USD.";
   } else {
-    clInr.textContent  = "—";
-    clUsd.textContent  = "—";
+    clInr.textContent = "—";
+    clUsd.textContent = "—";
     clRate.textContent = "Unavailable";
     clLive.textContent = "Offline";
     clSource.textContent = cl.source || "Chainlink not available";
@@ -149,17 +149,17 @@ function renderBlockchainProof(bc) {
     bcStored.textContent = "Stored ✓";
     bcStoredCard.classList.add("bc-card--green");
     bcStatus.textContent = "Valuation stored immutably on the Ethereum blockchain.";
-    bcIndex.textContent      = bc.chain_index ?? "—";
-    bcContract.textContent   = shortHash(bc.contract);
-    bcContract.title         = bc.contract || "";
-    bcTxHash.textContent     = bc.tx_hash    || "—";
-    bcTxHash.title           = bc.tx_hash    || "";
-    bcImageHash.textContent  = bc.image_hash  || "—";
-    bcImageHash.title        = bc.image_hash  || "";
+    bcIndex.textContent = bc.chain_index ?? "—";
+    bcContract.textContent = shortHash(bc.contract);
+    bcContract.title = bc.contract || "";
+    bcTxHash.textContent = bc.tx_hash || "—";
+    bcTxHash.title = bc.tx_hash || "";
+    bcImageHash.textContent = bc.image_hash || "—";
+    bcImageHash.title = bc.image_hash || "";
     bcReportHash.textContent = bc.report_hash || "—";
-    bcReportHash.title       = bc.report_hash || "";
-    bcIpfsCid.textContent    = bc.report_cid  || "—";
-    bcIpfsCid.title          = bc.report_cid  || "";
+    bcReportHash.title = bc.report_hash || "";
+    bcIpfsCid.textContent = bc.report_cid || "—";
+    bcIpfsCid.title = bc.report_cid || "";
   } else {
     bcStored.textContent = "Not stored";
     bcStoredCard.classList.remove("bc-card--green");
@@ -239,7 +239,7 @@ form.addEventListener("submit", async (event) => {
   // Hide panels while running
   blockchainPanel.style.display = "none";
   if (chainlinkPanel) chainlinkPanel.style.display = "none";
-  if (reportPanel)    reportPanel.style.display    = "none";
+  if (reportPanel) reportPanel.style.display = "none";
 
   try {
     const result = await postJson("/api/predict", formPayload());
@@ -285,8 +285,8 @@ form.addEventListener("submit", async (event) => {
    ═══════════════════════════════════════════════════ */
 
 const reportPanel = document.querySelector("#reportPanel");
-const reportGrid  = document.querySelector("#reportGrid");
-let   _lastReport = null;   // store full report for download
+const reportGrid = document.querySelector("#reportGrid");
+let _lastReport = null;   // store full report for download
 
 function shortStr(s, n = 16) {
   if (!s || s.length <= n) return s || "—";
@@ -318,8 +318,8 @@ function renderReport(result) {
   reportPanel.style.display = "block";
   _lastReport = result;
 
-  const bc  = result.blockchain || {};
-  const cl  = result.chainlink  || {};
+  const bc = result.blockchain || {};
+  const cl = result.chainlink || {};
   const now = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 
   // Format INR nicely
@@ -339,12 +339,12 @@ function renderReport(result) {
 
   // Blockchain part
   const bcPart = bc.stored
-    ? rcHashCard("Transaction Hash", bc.tx_hash  || "—") +
-      rcHashCard("Image SHA-256",    bc.image_hash  || "—") +
-      rcHashCard("Report SHA-256",   bc.report_hash || "—") +
-      rcHashCard("IPFS CID",         bc.report_cid  || "NO_IPFS_CONFIGURED") +
-      rcCard("Prediction #", bc.chain_index ?? "—") +
-      rcCard("Contract",     shortStr(bc.contract, 20))
+    ? rcHashCard("Transaction Hash", bc.tx_hash || "—") +
+    rcHashCard("Image SHA-256", bc.image_hash || "—") +
+    rcHashCard("Report SHA-256", bc.report_hash || "—") +
+    rcHashCard("IPFS CID", bc.report_cid || "NO_IPFS_CONFIGURED") +
+    rcCard("Prediction #", bc.chain_index ?? "—") +
+    rcCard("Contract", shortStr(bc.contract, 20))
     : `<div class="report-card" style="grid-column:1/-1">
          <span class="rc-label">Blockchain</span>
          <span class="rc-value" style="color:#c97c21">
@@ -361,15 +361,15 @@ function renderReport(result) {
     usdPart +
 
     sectionTitle("Property") +
-    rcCard("Latitude",  result.latitude  || "—") +
+    rcCard("Latitude", result.latitude || "—") +
     rcCard("Longitude", result.longitude || "—") +
-    rcCard("Zoom Level", result.zoom     || "—") +
+    rcCard("Zoom Level", result.zoom || "—") +
 
     sectionTitle("Model") +
     rcCard("Architecture", "Fusion-2 Cross-Attention") +
-    rcCard("R² Score",   result.model?.r2   || "—") +
-    rcCard("MAPE",       result.model?.mape ? result.model.mape + "%" : "—") +
-    rcCard("P50 Error",  result.model?.p50_error ? result.model.p50_error + "%" : "—") +
+    rcCard("R² Score", result.model?.r2 || "—") +
+    rcCard("MAPE", result.model?.mape ? result.model.mape + "%" : "—") +
+    rcCard("P50 Error", result.model?.p50_error ? result.model.p50_error + "%" : "—") +
 
     sectionTitle("Blockchain Proof") +
     bcPart;
@@ -381,47 +381,47 @@ function downloadReport(format) {
     return;
   }
 
-  const bc  = _lastReport.blockchain || {};
-  const cl  = _lastReport.chainlink  || {};
+  const bc = _lastReport.blockchain || {};
+  const cl = _lastReport.chainlink || {};
   const now = new Date().toISOString();
 
   const report = {
-    generated_at     : now,
-    valuation        : {
-      predicted_price : _lastReport.prediction,
-      range           : _lastReport.range,
-      confidence_pct  : _lastReport.confidence + "%",
+    generated_at: now,
+    valuation: {
+      predicted_price: _lastReport.prediction,
+      range: _lastReport.range,
+      confidence_pct: _lastReport.confidence + "%",
     },
-    usd_conversion   : cl.available ? {
-      usd             : cl.usd_fmt,
-      rate            : `1 USD = ₹${cl.rate}`,
-      source          : cl.rate_source,
+    usd_conversion: cl.available ? {
+      usd: cl.usd_fmt,
+      rate: `1 USD = ₹${cl.rate}`,
+      source: cl.rate_source,
     } : null,
-    property         : {
-      latitude        : _lastReport.latitude,
-      longitude       : _lastReport.longitude,
-      zoom            : _lastReport.zoom,
+    property: {
+      latitude: _lastReport.latitude,
+      longitude: _lastReport.longitude,
+      zoom: _lastReport.zoom,
     },
-    model            : {
-      architecture    : "Fusion-2 Cross-Attention",
-      r2              : _lastReport.model?.r2,
-      mape            : _lastReport.model?.mape,
+    model: {
+      architecture: "Fusion-2 Cross-Attention",
+      r2: _lastReport.model?.r2,
+      mape: _lastReport.model?.mape,
     },
-    blockchain_proof : bc.stored ? {
-      tx_hash         : bc.tx_hash,
+    blockchain_proof: bc.stored ? {
+      tx_hash: bc.tx_hash,
       prediction_index: bc.chain_index,
-      image_sha256    : bc.image_hash,
-      report_sha256   : bc.report_hash,
-      ipfs_cid        : bc.report_cid,
-      contract        : bc.contract,
+      image_sha256: bc.image_hash,
+      report_sha256: bc.report_hash,
+      ipfs_cid: bc.report_cid,
+      contract: bc.contract,
     } : { stored: false, error: bc.error },
   };
 
   if (format === "json") {
     const blob = new Blob([JSON.stringify(report, null, 2)],
-                          { type: "application/json" });
-    const a    = document.createElement("a");
-    a.href     = URL.createObjectURL(blob);
+      { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
     a.download = `valuation_report_${Date.now()}.json`;
     a.click();
   } else {
@@ -473,8 +473,8 @@ ${report.usd_conversion ? `
 
 <h2>Blockchain Proof</h2>
 ${report.blockchain_proof.stored === false
-  ? `<p style="color:#c97c21">${report.blockchain_proof.error || "Not stored"}</p>`
-  : `
+        ? `<p style="color:#c97c21">${report.blockchain_proof.error || "Not stored"}</p>`
+        : `
 <div class="row"><span>Prediction #</span><span>${report.blockchain_proof.prediction_index}</span></div>
 <div class="row"><span>Transaction Hash</span><span class="hash">${report.blockchain_proof.tx_hash}</span></div>
 <div class="row"><span>Image SHA-256</span><span class="hash">${report.blockchain_proof.image_sha256}</span></div>
@@ -506,6 +506,16 @@ const historyContent = document.querySelector("#historyContent");
 function tsToStr(ts) {
   if (!ts) return "—";
   return new Date(ts * 1000).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+}
+
+async function verifyPrediction(index) {
+  try {
+    const result = await postJson("/api/blockchain-verify", { index });
+    if (!result.success) throw new Error(result.error || "Verification failed");
+    await loadHistory();
+  } catch (error) {
+    historyContent.innerHTML = `<div class="history-error">⚠ ${error.message}</div>`;
+  }
 }
 
 async function loadHistory() {
@@ -545,6 +555,7 @@ async function loadHistory() {
           <span class="badge ${p.verified ? "badge--green" : "badge--amber"}">
             ${p.verified ? "✓ Verified" : "Pending"}
           </span>
+          ${p.verified ? "" : `<button class="small-button" onclick="verifyPrediction(${p.index})">Verify</button>`}
         </td>
       </tr>`).join("");
 

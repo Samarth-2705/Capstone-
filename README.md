@@ -93,11 +93,13 @@ Optional blockchain RPC override:
 export BLOCKCHAIN_RPC="http://127.0.0.1:7545"
 ```
 
-Optional IPFS pinning via Pinata (only if you extend runtime wiring to pass this token into the blockchain client):
+Optional IPFS pinning via Pinata. The server loads this token from the project-root `.env` and passes it to the blockchain client:
 
 ```bash
 export PINATA_JWT="YOUR_PINATA_JWT"
 ```
+
+For local development, create `Capstone-/.env` with `PINATA_JWT=YOUR_PINATA_JWT`. When a prediction is made, the valuation report is uploaded to Pinata and its CID is stored in the prediction record on-chain. The token must have permission to pin files; keep it private and do not commit `.env`.
 
 4. Start the app.
 
