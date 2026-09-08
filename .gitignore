@@ -29,3 +29,4 @@ web_app/satellite_cache/
 web_app/.env
 capstone
 .vscode
+web_app/contract_address.txt
