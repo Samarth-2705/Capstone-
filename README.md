@@ -146,7 +146,13 @@ The ML pipeline works without blockchain. Blockchain integration is additive.
 
 ### Local Ganache
 
+
 1. Start Ganache on `http://127.0.0.1:7545`.
+run this code in terminal 
+```bash
+ganache --port 7545 --chain.chainId 1337 --miner.blockGasLimit 12000000
+```
+
 2. Deploy the contract once:
 
 ```bash
