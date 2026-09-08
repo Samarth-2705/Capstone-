@@ -711,7 +711,6 @@ class AppHandler(BaseHTTPRequestHandler):
 def main() -> None:
     print(f"Property AI demo running at http://{HOST}:{PORT}")
     print("Cross-attention Fusion-2 model loaded from:", ARTIFACT_DIR)
-    print("Set GOOGLE_MAPS_API_KEY before launch to fetch Google satellite images.")
     print("Press Ctrl+C to stop the server.")
     ThreadingHTTPServer((HOST, PORT), AppHandler).serve_forever()
 
