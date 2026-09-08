@@ -203,5 +203,4 @@ Use notebooks under `notebooks/` for training/experiments. If you retrain the Fu
 - Keep satellite zoom near 19 for consistency with the current trained model behavior.
 
 ## License
-
-Add your preferred license file (for example, MIT) and update this section accordingly.
+-none for now 
